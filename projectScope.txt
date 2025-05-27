@@ -1,0 +1,82 @@
+# Project Scope: Antidote (Evolving Document - 2025-05-26)
+
+## 1. Game Title
+
+Antidote
+
+## 2. Core Concept
+
+A 3D game built with Three.js, blending FPS, RTS, and Tower Defense. The gameplay revolves around a three-phase cycle (Setup, War, Conquest) in a minimalist, low-poly world. The player, a Human Engineer, must manage resources, build bases, command AI robot units, *cure infected humans ("The-Gray")*, and ultimately establish control over 12 regions while fending off invaders.
+
+## 3. Gameplay Mechanics
+
+* **Player View:** FPS (default) / 3rd Person (toggle).
+* **RTS View (Map Mode):** Icon-based strategic view with immediate actions.
+* **Fog of War:** Dynamic LoS-based visibility.
+* **Curing Mechanic:** A 5-step process to cure "The-Gray":
+    * 1. **Impede:** Shoot 3-7 parasite points (slows enemy); stun on completion.
+    * 2. **Subdue:** Timed (10s) interaction to install a link patch (failure = host death).
+    * 3. **Administer:** Mini-game for antidote application (failure = patch damage; alerts enemies).
+    * 4. **Protect:** Timed (15-120s) defense within a 'radiation pool'.
+    * 5. **Evac:** Transport human to base (Player carry, AI carry, or crawl).
+* **Leadership System:**
+    * Cured Humans can become Leaders (4 Strengths, 1-3 Weaknesses).
+    * Choice: Leadership (keeps stats) vs. Evac (can be forced into leadership with penalties).
+    * Leaders provide buffs/debuffs.
+* **Collision Detection:** Required for players and units.
+* **Health/Damage System:** For all units, structures, and enemies.
+
+## 4. Factions & Units
+
+* **Player:** Human Engineer (FPS/RTS control).
+* **Player Units:** AI Robots (Gather, Build, Fight, Scout, Carry).
+* **Hostile:**
+    * "The-Gray": Infected Humans (Cure/Kill target).
+    * "Dark-Grey": Parasite Swarms (Spawn when The-Gray are killed; 3 waves of 12).
+* **NPC/Potential Units:**
+    * Cured Humans (Consume food; need Evac or become Leaders).
+    * Leaders (Assignable special units).
+
+## 5. Game Phases & Features
+
+### Phase 1: Setup
+* Area Clearance.
+* Resource Collection (*Food, Antidote components*, Base materials; Min/Max values).
+* Base Building (*Extraction Points*, Defenses, Production, Crafting).
+* Unit Management (AI Robots).
+
+### Phase 2: War
+* Fog of War Clearance/Telemetry.
+* Alliance Building/Destroying.
+* Skirmish/Battles (vs. The-Gray, Dark-Grey, Invaders).
+* Resource Control.
+* Curing/Leader Acquisition.
+
+### Phase 3: Conquest
+* Regional Control (12 regions).
+* Survival (Increasing extra-terrestrial waves).
+
+## 6. Visual & Audio Style
+
+* **Visuals:** Minimalist, low-poly, dynamic lighting (controlled vs. dark areas).
+* **Audio:** TBD.
+
+## 7. Technical Goals & Design Principles
+
+* **Engine:** Three.js.
+* **Modularity:** Separate files, distinct systems.
+* **Debugging:** `console.log` tracking, *configurable variables at top*, *Debug/Balancing UI*.
+* **Readability:** Extensive comments.
+* **Server (Future):** PHP/Database for potential helper system.
+
+## 8. Current To-Do / Next Steps (Focus on Core Gameplay)
+
+* [ ] Refine Player Movement & **Collision** (Improve object interaction).
+* [X] Basic Three.js Scene Setup.
+* [ ] Implement a basic **"The-Gray" enemy** (Model placeholder, basic AI - e.g., move towards player).
+* [ ] Implement basic **FPS shooting** mechanic (Raycasting).
+* [ ] Implement Step 1 of Cure (Hit zones on "The-Gray").
+* [ ] Implement basic **Resource Gathering** (e.g., simple resource nodes).
+* [ ] Implement basic **Base Building** (Place a simple structure).
+* [ ] Implement UI for **Resource display**.
+* [ ] Implement **Debug/Balancing UI** (e.g., dat.GUI).

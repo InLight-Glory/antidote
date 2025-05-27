@@ -1,0 +1,49 @@
+/* Basic Reset */
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrollbars */
+    font-family: 'Arial', sans-serif; /* Basic font for UI elements */
+    background-color: #000; /* Black background for the page */
+    cursor: auto; /* Default cursor */
+}
+
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+}
+
+/* When PointerLockControls are active, hide the default cursor */
+body.pointer-lock-active {
+    cursor: none;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allows clicks to pass through to the canvas */
+    color: white;
+}
+
+#crosshair {
+    /* Styling is inline in HTML for simplicity, can be moved here */
+}
+
+#debug-panel {
+    /* Styling is inline in HTML for simplicity, can be moved here */
+    pointer-events: all; /* Allow interaction with debug panel if needed */
+    font-size: 12px;
+}
+
+/* Added transition for Antidote Pressure Bar for smoother movement */
+#antidote-pressure-bar {
+    transition: width 0.05s linear;
+}
+
+#antidote-timer-bar {
+    transition: width 0.1s linear;
+}
