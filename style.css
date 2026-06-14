@@ -1,22 +1,16 @@
-/* Basic Reset */
-body, html {
+body {
     margin: 0;
-    padding: 0;
-    overflow: hidden; /* Prevent scrollbars */
-    font-family: 'Arial', sans-serif; /* Basic font for UI elements */
-    background-color: #000; /* Black background for the page */
-    cursor: auto; /* Default cursor */
+    overflow: hidden;
+    font-family: Arial, sans-serif;
 }
 
 #game-container {
-    width: 100vw;
-    height: 100vh;
-    display: block;
-}
-
-/* When PointerLockControls are active, hide the default cursor */
-body.pointer-lock-active {
-    cursor: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 #ui-overlay {
@@ -25,25 +19,264 @@ body.pointer-lock-active {
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: none; /* Allows clicks to pass through to the canvas */
-    color: white;
+    pointer-events: none; /* Allows clicks to pass through to the game */
+}
+
+#ui-overlay > * {
+    pointer-events: auto; /* Re-enable pointer events for UI elements */
+}
+
+.pointer-lock-active #crosshair {
+    display: block;
 }
 
 #crosshair {
-    /* Styling is inline in HTML for simplicity, can be moved here */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background-color: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    display: none; /* Hidden by default, shown when pointer locked */
 }
 
-#debug-panel {
-    /* Styling is inline in HTML for simplicity, can be moved here */
-    pointer-events: all; /* Allow interaction with debug panel if needed */
-    font-size: 12px;
+#interaction-prompt {
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 24px;
+    text-shadow: 2px 2px 4px #000;
+    display: none;
 }
 
-/* Added transition for Antidote Pressure Bar for smoother movement */
+#subdue-progress {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 20px;
+    background-color: rgba(0,0,0,0.5);
+    border: 1px solid white;
+    display: none;
+}
+
+#subdue-bar {
+    width: 0%;
+    height: 100%;
+    background-color: #006400;
+}
+
+#antidote-minigame {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 80px;
+    background-color: rgba(0,0,0,0.6);
+    border: 2px solid #00FFFF;
+    border-radius: 5px;
+    display: none;
+    padding: 5px;
+}
+
+#antidote-gauge-container {
+    width: 100%;
+    height: 20px;
+    background-color: #333;
+    border: 1px solid #555;
+    position: relative;
+    margin-bottom: 5px;
+}
+
+#antidote-sweet-spot {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background-color: rgba(0, 255, 0, 0.3);
+}
+
+#antidote-overfill-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.3);
+}
+
 #antidote-pressure-bar {
-    transition: width 0.05s linear;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 100%;
+    background-color: #00FF00;
+}
+
+#antidote-overfill-warning {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.5);
+    display: none;
+}
+
+#antidote-timer-container {
+    width: 100%;
+    height: 15px;
+    background-color: #222;
+    border: 1px solid #444;
 }
 
 #antidote-timer-bar {
-    transition: width 0.1s linear;
+    width: 0%;
+    height: 100%;
+    background-color: #00FFFF;
+}
+
+#antidote-feedback {
+    text-align: center;
+    color: #FFFF00;
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+#debug-panel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    display: none;
+}
+
+#blueprint-prompt {
+    display: none !important;
+}
+
+#interaction-info-modal {
+    position: absolute;
+    bottom: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    max-width: 420px;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #fff;
+    text-align: center;
+    pointer-events: none;
+    z-index: 900;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+#interaction-info-title {
+    font-size: 1.15rem;
+    font-weight: bold;
+    color: #00ffcc;
+    margin-bottom: 6px;
+}
+
+#interaction-info-body {
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: #eee;
+    margin-bottom: 8px;
+}
+
+#interaction-info-action {
+    font-size: 0.85rem;
+    color: #aaa;
+    font-style: italic;
+}
+
+/* HUD Styles */
+#hud-health,
+#hud-score,
+#hud-wood,
+#hud-stone {
+    margin-bottom: 5px;
+}
+
+/* Build Menu Styles */
+#build-menu {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 10px;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1001;
+    max-width: 80%;
+    box-sizing: border-box;
+}
+
+#build-menu.active {
+    display: flex; /* Show when active */
+}
+
+.menu-category {
+    background-color: rgba(50,50,50,0.7);
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.category-title,
+.subcategory-title {
+    color: #00FFFF;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.subcategory {
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.menu-button {
+    background-color: #333;
+    color: white;
+    border: 1px solid #666;
+    padding: 8px 15px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: calc(50% - 10px); /* Two buttons per row */
+    box-sizing: border-box;
+    display: inline-block;
+}
+
+.menu-button:hover {
+    background-color: #555;
+}
+
+.menu-button.selected {
+    background-color: #007BFF; /* Highlight selected button */
+    border-color: #00BFFF;
+}
+
+#close-build-menu {
+    background-color: #dc3545;
+}
+
+#close-build-menu:hover {
+    background-color: #c82333;
 }

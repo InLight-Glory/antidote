@@ -4,7 +4,8 @@
 const PLAYER_COLLIDER_HEIGHT = 1.8;
 const PLAYER_WIDTH = 0.6;
 const PLAYER_DEPTH = 0.6;
-const PLAYER_SPEED = 5.0;
+const PLAYER_SPEED = 8.0;
+const SPRINT_MULTIPLIER = 3; // Player moves 29 times faster when sprinting
 const PLAYER_JUMP_VELOCITY = 7.0;
 const GRAVITY = -19.6;
 const SHOOT_DAMAGE = 25;
@@ -22,6 +23,10 @@ let canJump = true;
 let eKeyPressed = false;
 let rightMouseDown = false;
 window.rightMouseDown = rightMouseDown;
+let isSprinting = false; // New variable for sprint mechanic
+
+let playerInventory = { wood: 0, stone: 0 };
+window.playerInventory = playerInventory;
 
 // --- CORE COMPONENTS ---
 let camera;
@@ -31,9 +36,136 @@ let objects;
 let debugControlsLockElement;
 let raycaster;
 
+function inRange(object3d, range) {
+    if (window.InteractionModal && window.InteractionModal.isWithinRange) {
+        return window.InteractionModal.isWithinRange(object3d, range);
+    }
+    if (!controls || !object3d) return false;
+    return controls.getObject().position.distanceTo(object3d.position) <= range;
+}
+
+function getGatherRange() {
+    return window.GATHER_RANGE || 6;
+}
+
+function getInteractionRange() {
+    return window.INTERACTION_RANGE || 5;
+}
+
+function resolveTargetFromHit(hitObject) {
+    if (window.InteractionModal && window.InteractionModal.resolveInteractable) {
+        return window.InteractionModal.resolveInteractable(hitObject);
+    }
+    return null;
+}
+
+function pickupResource(resourceMesh) {
+    if (!resourceMesh.userData.isResource) return;
+    if (!inRange(resourceMesh, getInteractionRange())) return;
+
+    const resourceType = resourceMesh.userData.type;
+    const resourceValue = resourceMesh.userData.value || 1;
+
+    if (window.playerInventory[resourceType] !== undefined) {
+        window.playerInventory[resourceType] += resourceValue;
+        console.log(`Picked up ${resourceValue} ${resourceType}. Total: ${window.playerInventory[resourceType]}`);
+        if (typeof window.updateHUD === 'function') {
+            window.updateHUD(null, null, window.playerInventory.wood, window.playerInventory.stone, null);
+        }
+    } else {
+        console.warn(`Unknown resource type: ${resourceType}`);
+    }
+
+    scene.remove(resourceMesh);
+    const index = objects.indexOf(resourceMesh);
+    if (index > -1) objects.splice(index, 1);
+    if (resourceMesh.geometry) resourceMesh.geometry.dispose();
+    if (resourceMesh.material) resourceMesh.material.dispose();
+}
+
+function performPrimaryActionOnTarget(resolved) {
+    if (!resolved) return false;
+
+    switch (resolved.kind) {
+        case 'wood':
+            if (inRange(resolved.object, getInteractionRange())) {
+                pickupResource(resolved.object);
+                return true;
+            }
+            return false;
+        case 'boulder':
+            if (inRange(resolved.object, getGatherRange()) && window.Boulders) {
+                window.Boulders.damageBoulder(resolved.object);
+                return true;
+            }
+            return false;
+        case 'tree':
+            if (inRange(resolved.object, getGatherRange()) && window.Trees) {
+                window.Trees.damageTree(resolved.object, window.SHOOT_DAMAGE || 25);
+                return true;
+            }
+            return false;
+        default:
+            return false;
+    }
+}
+
+function performShootOnReticle() {
+    if (!window.controls || !window.camera || !window.objects || !raycaster) return;
+
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), window.camera);
+    const intersects = raycaster.intersectObjects(window.objects, true);
+
+    for (const hit of intersects) {
+        const resolved = resolveTargetFromHit(hit.object);
+        if (resolved) {
+            if (!inRange(resolved.object, resolved.range)) return;
+            if (resolved.kind === 'blueprint' || resolved.kind === 'building') return;
+            if (performPrimaryActionOnTarget(resolved)) return;
+        }
+
+        const hitObject = hit.object;
+        if (hitObject.userData && hitObject.userData.isDarkGrey) {
+            if (!inRange(hitObject, getGatherRange())) return;
+            if (window.darkGreyTakeDamage) window.darkGreyTakeDamage(hitObject, window.SHOOT_DAMAGE || 25);
+            return;
+        }
+        if (hitObject.userData && hitObject.userData.isBoulder) {
+            if (!inRange(hitObject, getGatherRange())) return;
+            if (window.Boulders) window.Boulders.damageBoulder(hitObject);
+            return;
+        }
+        if (hitObject.userData && hitObject.userData.isResource) return;
+
+        if (!inRange(hitObject, getGatherRange())) continue;
+
+        if (typeof hitObject.takeDamage === 'function') {
+            hitObject.takeDamage(window.SHOOT_DAMAGE || 25, 'player');
+            return;
+        }
+        if (hitObject.parent && typeof hitObject.parent.takeDamage === 'function') {
+            if (!inRange(hitObject.parent, getGatherRange())) return;
+            hitObject.parent.takeDamage(window.SHOOT_DAMAGE || 25, 'player');
+            return;
+        }
+        if (hitObject.userData && typeof hitObject.userData.health === 'number') {
+            if (window.Collisions && window.Collisions.damageBlock) {
+                window.Collisions.damageBlock(hitObject, window.SHOOT_DAMAGE || 25);
+            } else {
+                hitObject.userData.health -= (window.SHOOT_DAMAGE || 25);
+                if (hitObject.material && hitObject.userData.originalColor) {
+                    const healthPercent = Math.max(0, hitObject.userData.health / hitObject.userData.maxHealth);
+                    hitObject.material.color.copy(hitObject.userData.originalColor).lerp(new THREE.Color(1, 0, 0), 1 - healthPercent);
+                }
+            }
+            return;
+        }
+    }
+}
+
 function initPlayer(_camera, _scene) {
     if (typeof window.debugLog === 'function') window.debugLog("Initializing Player...");
-    else console.log("Initializing Player (debugLog not found)...");
+    else console.log("Initializing Player (debugLog not found)....");
 
     camera = _camera;
     scene = _scene;
@@ -92,7 +224,19 @@ function initPlayer(_camera, _scene) {
         // Ensure not in map view before handling game clicks
         if (controls && controls.isLocked && !window.isMapViewActive) {
             if (event.button === 0) {
-                if (typeof window.handleShoot === 'function') window.handleShoot();
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const intersects = raycaster.intersectObjects(window.objects, true);
+
+                for (const hit of intersects) {
+                    const resolved = resolveTargetFromHit(hit.object);
+                    if (resolved && inRange(resolved.object, resolved.range)) {
+                        if (performPrimaryActionOnTarget(resolved)) return;
+                        if (resolved.kind === 'blueprint') return;
+                    }
+                    if (resolved && !inRange(resolved.object, resolved.range)) return;
+                }
+
+                performShootOnReticle();
             } else if (event.button === 2) {
                 event.preventDefault();
                 console.log("[PLAYER.JS] Right MOUSE DOWN detected.");
@@ -143,7 +287,16 @@ function initPlayer(_camera, _scene) {
     });
 }
 
+function findBlueprintUnderReticle() {
+    const target = window.InteractionModal && window.InteractionModal.findTargetUnderReticle
+        ? window.InteractionModal.findTargetUnderReticle()
+        : null;
+    return target && target.kind === 'blueprint' ? target.object : null;
+}
+
 function onKeyDown(event) {
+    if (window.isPlayerDead) return;
+
     // NEW: Check for Map Toggle Key 'M'
     if (event.code === 'KeyM') {
         if (typeof window.toggleMapView === 'function') {
@@ -154,7 +307,20 @@ function onKeyDown(event) {
 
     // NEW: If map is active, ignore movement keys
     if (window.isMapViewActive) {
-        return;
+        switch (event.code) {
+            case 'KeyB':
+                if (typeof window.RadialMenu.showRadialMenu === 'function') {
+                    // Show the radial menu in the center of the screen
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    window.RadialMenu.showRadialMenu(centerX, centerY, (blueprintType) => {
+                        window.BuildManager.setSelectedBlueprintType(blueprintType);
+                    });
+                }
+                break;
+            // Add other map-view-only keys here in the future
+        }
+        return; // Ignore movement keys
     }
 
     switch (event.code) {
@@ -162,6 +328,7 @@ function onKeyDown(event) {
         case 'KeyA': moveLeft = true; break;
         case 'KeyS': moveBackward = true; break;
         case 'KeyD': moveRight = true; break;
+        case 'ShiftLeft': isSprinting = true; break; // Sprint
         case 'Space':
             if (canJump && playerOnGround) {
                 playerVelocity.y = PLAYER_JUMP_VELOCITY;
@@ -169,7 +336,39 @@ function onKeyDown(event) {
             }
             break;
         case 'KeyE':
-            if (!eKeyPressed && typeof window.requestPatchApplicationStart === 'function') {
+            const blueprint = findBlueprintUnderReticle();
+            if (blueprint && typeof window.BaseBuilding.depositResources === 'function') {
+                let depositedWood = 0;
+                let depositedStone = 0;
+
+                // Deposit wood
+                if (window.playerInventory.wood > 0) {
+                    const amountToDeposit = Math.min(window.playerInventory.wood, blueprint.userData.requiredWood - blueprint.userData.woodDeposited);
+                    if (amountToDeposit > 0) {
+                        depositedWood = window.BaseBuilding.depositResources(blueprint, 'wood', amountToDeposit);
+                        window.playerInventory.wood -= depositedWood;
+                    }
+                }
+
+                // Deposit stone
+                if (window.playerInventory.stone > 0) {
+                    const amountToDeposit = Math.min(window.playerInventory.stone, blueprint.userData.requiredStone - blueprint.userData.stoneDeposited);
+                    if (amountToDeposit > 0) {
+                        depositedStone = window.BaseBuilding.depositResources(blueprint, 'stone', amountToDeposit);
+                        window.playerInventory.stone -= depositedStone;
+                    }
+                }
+
+                if (depositedWood > 0 || depositedStone > 0) {
+                    console.log(`Deposited ${depositedWood} wood and ${depositedStone} stone into blueprint.`);
+                    if (typeof window.updateHUD === 'function') {
+                        window.updateHUD(null, null, window.playerInventory.wood, window.playerInventory.stone, null);
+                    }
+                } else {
+                    console.log("No resources to deposit or blueprint already complete.");
+                }
+            } else if (!eKeyPressed && typeof window.requestPatchApplicationStart === 'function') {
+                // Existing E key logic (for curing mechanic)
                 window.requestPatchApplicationStart();
             }
             eKeyPressed = true;
@@ -189,6 +388,7 @@ function onKeyUp(event) {
         case 'KeyA': moveLeft = false; break;
         case 'KeyS': moveBackward = false; break;
         case 'KeyD': moveRight = false; break;
+        case 'ShiftLeft': isSprinting = false; break; // Stop Sprint
         case 'KeyE':
             if (typeof window.requestPatchApplicationCancel === 'function') {
                 window.requestPatchApplicationCancel();
@@ -215,7 +415,26 @@ function getPlayerAABB(position) {
     );
 }
 
+function isSolidForPlayer(object) {
+    if (!object) return false;
+    const ud = object.userData;
+    if (!ud) return true;
+    if (ud.isTheGray || ud.isResource || ud.isDarkGrey || ud.isSubdueRect) return false;
+    return true;
+}
+
+function playerIntersectsSolidAt(position) {
+    const playerAABB = getPlayerAABB(position);
+    for (const object of objects) {
+        if (!isSolidForPlayer(object)) continue;
+        const objectAABB = new THREE.Box3().setFromObject(object);
+        if (playerAABB.intersectsBox(objectAABB)) return true;
+    }
+    return false;
+}
+
 function updatePlayer(delta) {
+    if (window.isPlayerDead) return;
     // This function is now only called when controls are locked and map isn't active
     if (!controls || !camera || !objects) return;
 
@@ -236,45 +455,45 @@ function updatePlayer(delta) {
     if (moveForward) inputForward += 1; if (moveBackward) inputForward -= 1;
     if (moveLeft) inputRight -= 1; if (moveRight) inputRight += 1;
 
-    const targetDx = (cameraForward.x * inputForward * PLAYER_SPEED - cameraRight.x * inputRight * PLAYER_SPEED) * delta;
-    const targetDz = (cameraForward.z * inputForward * PLAYER_SPEED - cameraRight.z * inputRight * PLAYER_SPEED) * delta;
+    const currentSpeed = isSprinting ? PLAYER_SPEED * SPRINT_MULTIPLIER : PLAYER_SPEED;
+
+    const targetDx = (cameraForward.x * inputForward * currentSpeed - cameraRight.x * inputRight * currentSpeed) * delta;
+    const targetDz = (cameraForward.z * inputForward * currentSpeed - cameraRight.z * inputRight * currentSpeed) * delta;
     const targetDy = playerVelocity.y * delta;
 
+    const startX = playerPosition.x;
+    const startZ = playerPosition.z;
+
     playerPosition.x += targetDx;
-    let playerAABB = getPlayerAABB(playerPosition);
-    if (typeof playerAABB === 'undefined') { console.error("playerAABB is undefined after getPlayerAABB (X-axis)!"); return; }
-    for (const object of objects) {
-        if (!object) { console.warn("Skipping null/undefined object in X-collision"); continue; }
-        if (object.userData && object.userData.isTheGray) continue;
-        const objectAABB = new THREE.Box3().setFromObject(object);
-        if (playerAABB.intersectsBox(objectAABB)) { playerPosition.x -= targetDx; break; }
-    }
-
     playerPosition.z += targetDz;
-    playerAABB = getPlayerAABB(playerPosition);
-    if (typeof playerAABB === 'undefined') { console.error("playerAABB is undefined after getPlayerAABB (Z-axis)!"); return; }
-    for (const object of objects) {
-        if (!object) { console.warn("Skipping null/undefined object in Z-collision"); continue; }
-        if (object.userData && object.userData.isTheGray) continue;
-        const objectAABB = new THREE.Box3().setFromObject(object);
-        if (playerAABB.intersectsBox(objectAABB)) { playerPosition.z -= targetDz; break; }
+    if (playerIntersectsSolidAt(playerPosition)) {
+        playerPosition.x = startX;
+        playerPosition.z = startZ;
+        playerPosition.x += targetDx;
+        if (playerIntersectsSolidAt(playerPosition)) {
+            playerPosition.x = startX;
+            playerPosition.z += targetDz;
+            if (playerIntersectsSolidAt(playerPosition)) {
+                playerPosition.x = startX;
+                playerPosition.z = startZ;
+            }
+        }
     }
 
-    playerOnGround = false;
     playerPosition.y += targetDy;
-    playerAABB = getPlayerAABB(playerPosition);
-    if (typeof playerAABB === 'undefined') { console.error("playerAABB is undefined after getPlayerAABB (Y-axis initial)!"); return; }
-    if (playerAABB.min.y < 0) {
+    let playerAABB = getPlayerAABB(playerPosition);
+    if (playerAABB.min.y <= 0 && playerVelocity.y <= 0) {
         playerPosition.y -= playerAABB.min.y;
-        if (playerVelocity.y < 0) playerVelocity.y = 0;
+        playerVelocity.y = 0;
         playerOnGround = true;
+    } else if (playerAABB.min.y > 0.05) {
+        playerOnGround = false;
     }
+
     playerAABB = getPlayerAABB(playerPosition);
-    if (typeof playerAABB === 'undefined') { console.error("playerAABB is undefined after ground collision getPlayerAABB (Y-axis)!"); return; }
 
     for (const object of objects) {
-        if (!object) { console.warn("Skipping null/undefined object in Y-collision"); continue; }
-        if (object.userData && object.userData.isTheGray) continue;
+        if (!isSolidForPlayer(object)) continue;
         const objectAABB = new THREE.Box3().setFromObject(object);
         if (playerAABB.intersectsBox(objectAABB)) {
             if (targetDy < 0 && playerAABB.min.y >= objectAABB.max.y - 0.1) {
@@ -284,9 +503,8 @@ function updatePlayer(delta) {
             } else if (targetDy > 0 && playerAABB.max.y <= objectAABB.min.y + 0.1) {
                 playerPosition.y = objectAABB.min.y - 0.01;
                 if (playerVelocity.y > 0) playerVelocity.y = 0;
+                playerOnGround = false;
             }
-            playerAABB = getPlayerAABB(playerPosition);
-            if (typeof playerAABB === 'undefined') { console.error("playerAABB is undefined after object collision getPlayerAABB (Y-axis)!"); return; }
             break;
         }
     }
@@ -294,36 +512,7 @@ function updatePlayer(delta) {
 }
 
 function handleShoot() {
-    if (!window.controls || !window.camera || !window.objects) return;
-    console.log('handleShoot() - Fired!');
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), window.camera);
-    const intersects = raycaster.intersectObjects(window.objects, true);
-    if (intersects.length > 0) {
-        const firstHit = intersects[0];
-        const hitObject = firstHit.object;
-        if (typeof hitObject.takeDamage === 'function') {
-            hitObject.takeDamage(window.SHOOT_DAMAGE || 25, 'player');
-        } else if (hitObject.parent && typeof hitObject.parent.takeDamage === 'function') {
-            hitObject.parent.takeDamage(window.SHOOT_DAMAGE || 25, 'player');
-        } else if (hitObject.userData && typeof hitObject.userData.takeDamage === 'function') {
-            hitObject.userData.takeDamage(window.SHOOT_DAMAGE || 25, 'player');
-        } else if (hitObject.userData && typeof hitObject.userData.health === 'number') {
-            if (window.Collisions && typeof window.Collisions.damageBlock === 'function') {
-                window.Collisions.damageBlock(hitObject, window.SHOOT_DAMAGE || 25);
-            } else {
-                hitObject.userData.health -= (window.SHOOT_DAMAGE || 25);
-                if (hitObject.material && hitObject.userData.originalColor) {
-                    const healthPercent = Math.max(0, hitObject.userData.health / hitObject.userData.maxHealth);
-                    hitObject.material.color.copy(hitObject.userData.originalColor).lerp(new THREE.Color(1, 0, 0), 1 - healthPercent);
-                }
-                if (hitObject.userData.health <= 0) {
-                    if (hitObject.parent) hitObject.parent.remove(hitObject);
-                    if (hitObject.geometry) hitObject.geometry.dispose();
-                    if (hitObject.material) hitObject.material.dispose();
-                }
-            }
-        }
-    }
+    performShootOnReticle();
 }
 window.initPlayer = initPlayer;
 window.updatePlayer = updatePlayer;

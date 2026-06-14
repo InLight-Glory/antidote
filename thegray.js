@@ -14,6 +14,9 @@ const ALERT_DURATION = 7.0;
 const IDLE_SPEED_MULTIPLIER = 0.3;
 const IDLE_WANDER_RADIUS = 15.0;
 const IDLE_TARGET_TIMER = 6.0;
+const GRAY_CONTACT_RANGE = 1.8;
+const GRAY_CONTACT_DAMAGE = 10;
+const GRAY_DAMAGE_COOLDOWN = 0.8;
 
 function createTheGray(position) {
     // Ensure global dependencies are available
@@ -45,7 +48,11 @@ function createTheGray(position) {
         isSubdued: false,       // True when patch is successfully placed & minigame would start
         isBeingSubdued: false,  // True during the 'E' hold for patch placement
         isPatchPlaced: false,   // True when patch is visually on the Gray
-        subdueRectangle: null
+        subdueRectangle: null,
+        cureAttemptCount: 0,
+        isProtecting: false,
+        isCuredHost: false,
+        isWorker: false
     };
 
     const hitPointGeometry = new THREE.SphereGeometry(0.2, 8, 8);
@@ -142,9 +149,13 @@ function theGrayTakeDamage(damage, source) {
         this.material.color.copy(this.userData.originalColor).lerp(new THREE.Color(1, 0, 0), 1 - percent);
     }
     if (this.userData.health <= 0) {
-        if (this.parent) this.parent.remove(this);
-        if (this.geometry) this.geometry.dispose();
-        if (this.material) this.material.dispose();
+        if (typeof window.removeTheGray === 'function') {
+            window.removeTheGray(this);
+        } else {
+            if (this.parent) this.parent.remove(this);
+            if (this.geometry) this.geometry.dispose();
+            if (this.material) this.material.dispose();
+        }
     }
 }
 
@@ -223,12 +234,18 @@ function updateTheGray(delta) {
     window.objects.forEach(object => {
         if (object.userData && object.userData.isTheGray && object.userData.health > 0) {
 
-            if (object.userData.isSubdued || object.userData.isPatchPlaced) {
-                if (object.userData.isSubdued) object.material.color.setHex(0x556B2F); // Dark Olive - fully subdued for next game step
-                else if (object.userData.isPatchPlaced) object.material.color.setHex(0xFFFF00); // Yellow - patch on, ready for minigame
-                // Make sure stun counter is hidden if patch is placed or subdued
+            if (object.userData.isSubdued || object.userData.isPatchPlaced ||
+                object.userData.isProtecting || object.userData.isCuredHost || object.userData.isWorker) {
+                if (object.userData.isSubdued && !object.userData.isProtecting) object.material.color.setHex(0x556B2F);
+                else if (object.userData.isPatchPlaced) object.material.color.setHex(0xFFFF00);
+                else if (object.userData.isProtecting) object.material.color.setHex(0x00cccc);
+                else if (object.userData.isCuredHost) object.material.color.setHex(0x88cc88);
                 if (object.userData.stunCounterMesh) updateStunCounterMesh(object);
-                return; // Immobile
+
+                if (object.userData.isCuredHost && !object.userData.isWorker && typeof window.damagePlayer === 'function') {
+                    object.userData.damageCooldown = (object.userData.damageCooldown || 0) - delta;
+                }
+                return;
             }
 
             if (object.userData.isStunned) {
@@ -333,8 +350,17 @@ function updateTheGray(delta) {
                     object.lookAt(playerPosition.x, object.position.y, playerPosition.z);
                     object.userData.turnTimer = THE_GRAY_TURN_DELAY * (0.8 + Math.random() * 0.4);
                  }
+
+                 const contactDist = grayPosition.distanceTo(playerPosition);
+                 if (contactDist < GRAY_CONTACT_RANGE && typeof window.damagePlayer === 'function') {
+                     object.userData.damageCooldown = (object.userData.damageCooldown || 0) - delta;
+                     if (object.userData.damageCooldown <= 0) {
+                         window.damagePlayer(GRAY_CONTACT_DAMAGE, 'the-gray');
+                         object.userData.damageCooldown = GRAY_DAMAGE_COOLDOWN;
+                     }
+                 }
             } else { // Idle turning
-                 if (totalForce.lengthSq() > 0.001) { // Look where it's going
+                 if (totalForce.lengthSq() > 0.001) {
                      const lookTarget = new THREE.Vector3().addVectors(object.position, totalForce);
                      object.lookAt(lookTarget.x, object.position.y, lookTarget.z);
                  }
@@ -346,3 +372,4 @@ function updateTheGray(delta) {
 window.createTheGray = createTheGray;
 window.updateTheGray = updateTheGray;
 window.updateStunCounterMesh = updateStunCounterMesh;
+window.addRandomHitPoint = addRandomHitPoint;

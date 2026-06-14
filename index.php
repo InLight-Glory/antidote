@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antidote</title>
     <link rel="stylesheet" href="style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="radial_menu.css?v=<?php echo time(); ?>">
     </head>
 <body>
     <div id="game-container"></div>
@@ -14,6 +15,13 @@
 
         <div id="interaction-prompt" style="position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); color: white; font-size: 24px; text-shadow: 2px 2px 4px #000; display: none;">
             {interaction_text}
+        </div>
+
+        <!-- Context info when aiming at nearby interactables -->
+        <div id="interaction-info-modal" style="display: none;">
+            <div id="interaction-info-title"></div>
+            <div id="interaction-info-body"></div>
+            <div id="interaction-info-action"></div>
         </div>
 
         <div id="subdue-progress" style="position: absolute; top: 55%; left: 50%; transform: translateX(-50%); width: 200px; height: 20px; background-color: rgba(0,0,0,0.5); border: 1px solid white; display: none;">
@@ -36,16 +44,43 @@
             <p>Position: <span id="debug-position">X:0, Y:0, Z:0</span></p>
             <p>Controls Locked: <span id="debug-controls-locked">false</span></p>
             </div>
+
+        <div id="cure-phase" style="position: absolute; top: 80px; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 18px; text-shadow: 2px 2px 4px #000;"></div>
+
+        <div id="protect-progress" style="position: absolute; top: 48%; left: 50%; transform: translateX(-50%); width: 260px; display: none;">
+            <div style="color: #00ffff; text-align: center; margin-bottom: 4px; font-size: 14px;">Antidote spreading — stay near host</div>
+            <div style="width: 100%; height: 18px; background-color: rgba(0,0,0,0.5); border: 1px solid #00ffff;">
+                <div id="protect-bar" style="width: 0%; height: 100%; background-color: #008888;"></div>
+            </div>
+        </div>
+
+        <div id="map-hint" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: #ccc; font-size: 14px; display: none; text-shadow: 1px 1px 2px #000;">
+            Map: [B] build menu · click unit · click cleared ground to move · [M] exit
+        </div>
+
+        <div id="death-screen" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; color: white;">
+            <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">You Died</h1>
+            <p id="death-stats" style="font-size: 1.2rem; margin-bottom: 2rem;"></p>
+            <button onclick="restartGame()" style="padding: 12px 32px; font-size: 1.1rem; cursor: pointer;">Restart</button>
+        </div>
+
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
+    <script src="game_state.js?v=<?php echo time(); ?>"></script>
+    <script src="darkgrey.js?v=<?php echo time(); ?>"></script>
+    <script src="fog_of_war.js?v=<?php echo time(); ?>"></script>
+    <script src="collector_bots.js?v=<?php echo time(); ?>"></script>
+    <script src="unit_control.js?v=<?php echo time(); ?>"></script>
+    <script src="interaction_modal.js?v=<?php echo time(); ?>"></script>
     <script src="thegray.js?v=<?php echo time(); ?>"></script>
     <script src="thegray-spawner.js?v=<?php echo time(); ?>"></script>
     <script src="player.js?v=<?php echo time(); ?>"></script>
     <script src="curing_mechanic.js?v=<?php echo time(); ?>"></script>
     <script type="module" src="main.js?v=<?php echo time(); ?>"></script>
+    <script src="hud.js?v=<?php echo time(); ?>"></script>
 
 </body>
 </html>

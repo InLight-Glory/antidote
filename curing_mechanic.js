@@ -1,21 +1,33 @@
 // curing_mechanic.js
 // Handles the multi-step curing process for The-Gray enemies.
+// Step 1: Impede (hit points - thegray.js)
 // Step 2: Subdue (Patch Placement by holding 'E')
 // Step 3: Administer (Antidote Minigame with Right-Click/Tap on Patch)
+// Step 4: Protect (stay near host while antidote spreads; Dark-Grey swarms)
+// Step 5: Evac (lead host to main base for full recovery)
 
 // --- CONSTANTS ---
 const SUBDUE_DISTANCE = 2.5;
 const SUBDUE_HOLD_TIME = 2.3;
-// UPDATED: Antidote Minigame Constants
 const ANTIDOTE_DISTANCE = 2.5;
-const ANTIDOTE_FILL_RATE = 15.0; // Slower fill rate from HOLDING
-const ANTIDOTE_DECAY_RATE = 20.0; // Faster decay rate (requires taps!)
-const ANTIDOTE_CLICK_PULSE = 7.0; // Pressure added per click
+const ANTIDOTE_FILL_RATE = 15.0;
+const ANTIDOTE_DECAY_RATE = 20.0;
+const ANTIDOTE_CLICK_PULSE = 7.0;
 const ANTIDOTE_SWEET_SPOT_MIN = 70.0;
 const ANTIDOTE_SWEET_SPOT_MAX = 85.0;
 const ANTIDOTE_REQUIRED_TIME = 8.0;
 const ANTIDOTE_OVERFILL_LIMIT = 98.0;
 const ANTIDOTE_FAIL_PENALTY_TIME = 5.0;
+
+const PROTECT_RADIUS = 8;
+const PROTECT_DURATION = 45.0;
+const PROTECT_OUTSIDE_GRACE = 4.0;
+const HOST_HEALTH_AFTER_SPREAD = 50;
+const EVAC_FOLLOW_RANGE = 14;
+const EVAC_BASE_RADIUS = 14;
+const HOST_FOLLOW_SPEED = 2.5;
+const HOST_CRAWL_SPEED = 1.2;
+const MAX_CURE_ATTEMPTS = 2;
 
 // --- MODULE STATE ---
 let closestPatchTarget = null;
@@ -29,6 +41,13 @@ let timeInSweetSpot = 0;
 let minigameFailTimer = 0;
 let isAimingAtPatch = false;
 
+// Step 4 & 5 state
+let protectTarget = null;
+let protectTimer = 0;
+let protectOutsideTimer = 0;
+let protectRingMesh = null;
+let evacTarget = null;
+
 // --- UI ELEMENT REFERENCES ---
 let interactionPromptElement;
 let subdueProgressElement;
@@ -40,6 +59,9 @@ let antidoteTimerBarElement;
 let antidoteFeedbackElement;
 let antidoteOverfillWarningElement;
 let antidoteOverfillZoneElement;
+let protectProgressElement;
+let protectBarElement;
+let curePhaseElement;
 
 
 function initCuringMechanic() {
@@ -54,6 +76,9 @@ function initCuringMechanic() {
     antidoteFeedbackElement = document.getElementById('antidote-feedback');
     antidoteOverfillWarningElement = document.getElementById('antidote-overfill-warning');
     antidoteOverfillZoneElement = document.getElementById('antidote-overfill-zone');
+    protectProgressElement = document.getElementById('protect-progress');
+    protectBarElement = document.getElementById('protect-bar');
+    curePhaseElement = document.getElementById('cure-phase');
 
     if (!interactionPromptElement || !subdueProgressElement || !subdueBarElement ||
         !antidoteMinigameElement || !antidotePressureBarElement || !antidoteTimerBarElement ||
@@ -65,6 +90,226 @@ function initCuringMechanic() {
         antidoteSweetSpotElement.style.width = `${ANTIDOTE_SWEET_SPOT_MAX - ANTIDOTE_SWEET_SPOT_MIN}%`;
         antidoteOverfillZoneElement.style.left = `${ANTIDOTE_OVERFILL_LIMIT}%`;
         antidoteOverfillZoneElement.style.width = `${100 - ANTIDOTE_OVERFILL_LIMIT}%`;
+    }
+}
+
+function _setCurePhase(text) {
+    if (curePhaseElement) curePhaseElement.textContent = text ? `Cure: ${text}` : '';
+}
+
+function _incrementCureAttempt(gray, reason) {
+    if (!gray || !gray.userData) return;
+    gray.userData.cureAttemptCount = (gray.userData.cureAttemptCount || 0) + 1;
+    if (typeof window.registerCureFailure === 'function') window.registerCureFailure();
+    if (typeof window.debugLog === 'function') {
+        window.debugLog(gray.name, 'cure attempt failed:', reason, 'count:', gray.userData.cureAttemptCount);
+    }
+    if (gray.userData.cureAttemptCount >= MAX_CURE_ATTEMPTS) {
+        _killHostOnFailedCure(gray, reason);
+    } else {
+        _resetGrayForRetry(gray);
+    }
+}
+
+function _killHostOnFailedCure(gray, reason) {
+    if (typeof window.debugLog === 'function') window.debugLog(gray.name, 'host died after failed cure:', reason);
+    _cleanupProtectVisuals();
+    protectTarget = null;
+    evacTarget = null;
+    if (typeof window.clearSwarmsForGray === 'function') window.clearSwarmsForGray(gray);
+    if (typeof window.removeTheGray === 'function') window.removeTheGray(gray);
+    _setCurePhase('');
+    if (interactionPromptElement) {
+        interactionPromptElement.textContent = 'Host lost. Parasite won.';
+        interactionPromptElement.style.display = 'block';
+        setTimeout(() => { if (interactionPromptElement) interactionPromptElement.style.display = 'none'; }, 3000);
+    }
+}
+
+function _resetGrayForRetry(gray) {
+    if (!gray || !gray.userData) return;
+    gray.userData.isProtecting = false;
+    gray.userData.isCuredHost = false;
+    gray.userData.isSubdued = false;
+    gray.userData.isPatchPlaced = false;
+    gray.userData.isStunned = false;
+    gray.userData.isBeingSubdued = false;
+    _removePatchMesh(gray);
+    if (gray.material && gray.userData.originalColor) gray.material.color.copy(gray.userData.originalColor);
+    if (typeof window.addRandomHitPoint === 'function') window.addRandomHitPoint(gray);
+    _setCurePhase('Retry — impede again');
+}
+
+function _createProtectRing(gray) {
+    if (!gray || typeof THREE === 'undefined' || !window.scene) return;
+    _cleanupProtectVisuals();
+    const ringGeo = new THREE.RingGeometry(PROTECT_RADIUS - 0.2, PROTECT_RADIUS, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    protectRingMesh = new THREE.Mesh(ringGeo, ringMat);
+    protectRingMesh.rotation.x = -Math.PI / 2;
+    protectRingMesh.position.set(gray.position.x, 0.08, gray.position.z);
+    window.scene.add(protectRingMesh);
+}
+
+function _cleanupProtectVisuals() {
+    if (protectRingMesh && window.scene) {
+        window.scene.remove(protectRingMesh);
+        if (protectRingMesh.geometry) protectRingMesh.geometry.dispose();
+        if (protectRingMesh.material) protectRingMesh.material.dispose();
+        protectRingMesh = null;
+    }
+    if (protectProgressElement) protectProgressElement.style.display = 'none';
+}
+
+function _startProtectPhase(gray) {
+    if (!gray || !gray.userData) return;
+    gray.userData.isSubdued = false;
+    gray.userData.isProtecting = true;
+    gray.userData.protectTimer = 0;
+    protectTarget = gray;
+    protectTimer = 0;
+    protectOutsideTimer = 0;
+    _createProtectRing(gray);
+    _setCurePhase('Protect — stay near host');
+    if (protectProgressElement) protectProgressElement.style.display = 'block';
+    if (protectBarElement) protectBarElement.style.width = '0%';
+    if (typeof window.spawnProtectSwarm === 'function') {
+        window.spawnProtectSwarm(gray.position.clone(), gray);
+    }
+}
+
+function _completeProtectPhase(gray) {
+    if (!gray || !gray.userData) return;
+    gray.userData.isProtecting = false;
+    gray.userData.isCuredHost = true;
+    gray.userData.isControllableUnit = true;
+    gray.userData.health = HOST_HEALTH_AFTER_SPREAD;
+    gray.userData.maxHealth = 100;
+    gray.material.color.setHex(0x88cc88);
+    _cleanupProtectVisuals();
+    if (typeof window.clearSwarmsForGray === 'function') window.clearSwarmsForGray(gray);
+    protectTarget = null;
+    evacTarget = gray;
+    _setCurePhase('Evac — lead host to base');
+    if (interactionPromptElement) {
+        interactionPromptElement.textContent = 'Lead the host to your main base [M for map]';
+        interactionPromptElement.style.display = 'block';
+    }
+    if (typeof window.UnitControl !== 'undefined' && window.UnitControl.registerUnit) {
+        window.UnitControl.registerUnit(gray);
+    }
+}
+
+function _updateProtectPhase(delta) {
+    if (!protectTarget || !protectTarget.userData || !window.controls) return true;
+
+    if (!protectTarget.parent || protectTarget.userData.health <= 0) {
+        _incrementCureAttempt(protectTarget, 'host died during protect');
+        protectTarget = null;
+        return true;
+    }
+
+    if (protectRingMesh) {
+        protectRingMesh.position.set(protectTarget.position.x, 0.08, protectTarget.position.z);
+    }
+
+    const playerPos = window.controls.getObject().position;
+    const dist = playerPos.distanceTo(protectTarget.position);
+
+    if (dist <= PROTECT_RADIUS) {
+        protectOutsideTimer = 0;
+        protectTimer += delta;
+        protectTarget.userData.protectTimer = protectTimer;
+    } else {
+        protectOutsideTimer += delta;
+        if (interactionPromptElement) {
+            interactionPromptElement.textContent = `Return to host! (${(PROTECT_OUTSIDE_GRACE - protectOutsideTimer).toFixed(1)}s)`;
+            interactionPromptElement.style.display = 'block';
+        }
+        if (protectOutsideTimer >= PROTECT_OUTSIDE_GRACE) {
+            const gray = protectTarget;
+            _cleanupProtectVisuals();
+            protectTarget = null;
+            if (typeof window.clearSwarmsForGray === 'function') window.clearSwarmsForGray(gray);
+            _incrementCureAttempt(gray, 'left protect zone');
+            return true;
+        }
+    }
+
+    const pct = Math.min(100, (protectTimer / PROTECT_DURATION) * 100);
+    if (protectBarElement) protectBarElement.style.width = `${pct}%`;
+
+    if (protectTimer >= PROTECT_DURATION) {
+        const gray = protectTarget;
+        protectTarget = null;
+        _completeProtectPhase(gray);
+        return true;
+    }
+    return false;
+}
+
+function _updateEvacPhase(delta) {
+    if (!evacTarget || !evacTarget.userData || !evacTarget.parent) {
+        evacTarget = null;
+        return;
+    }
+
+    const ud = evacTarget.userData;
+    if (!ud.isCuredHost) { evacTarget = null; return; }
+
+    if (ud.moveCommand) {
+        const dir = new THREE.Vector3().subVectors(ud.moveCommand, evacTarget.position);
+        dir.y = 0;
+        if (dir.lengthSq() < 1) {
+            ud.moveCommand = null;
+        } else {
+            dir.normalize();
+            evacTarget.position.x += dir.x * HOST_FOLLOW_SPEED * delta;
+            evacTarget.position.z += dir.z * HOST_FOLLOW_SPEED * delta;
+            evacTarget.lookAt(ud.moveCommand.x, evacTarget.position.y, ud.moveCommand.z);
+        }
+        return;
+    }
+
+    const playerPos = window.controls.getObject().position;
+    const distPlayer = evacTarget.position.distanceTo(playerPos);
+    let moveTarget = null;
+    let speed = HOST_CRAWL_SPEED;
+
+    if (distPlayer <= EVAC_FOLLOW_RANGE) {
+        moveTarget = playerPos.clone();
+        moveTarget.y = evacTarget.position.y;
+        speed = HOST_FOLLOW_SPEED;
+    } else if (window.BaseBuilding && window.BaseBuilding.getMainBase) {
+        const base = window.BaseBuilding.getMainBase();
+        if (base) moveTarget = base.position.clone();
+    }
+
+    if (moveTarget) {
+        const dir = new THREE.Vector3().subVectors(moveTarget, evacTarget.position);
+        dir.y = 0;
+        if (dir.lengthSq() > 1) {
+            dir.normalize();
+            evacTarget.position.x += dir.x * speed * delta;
+            evacTarget.position.z += dir.z * speed * delta;
+            evacTarget.lookAt(moveTarget.x, evacTarget.position.y, moveTarget.z);
+        }
+    }
+
+    if (window.BaseBuilding && window.BaseBuilding.isNearMainBase) {
+        if (window.BaseBuilding.isNearMainBase(evacTarget.position, EVAC_BASE_RADIUS)) {
+            ud.health = 100;
+            ud.isCuredHost = false;
+            ud.isWorker = true;
+            evacTarget.material.color.setHex(0x44aa44);
+            if (typeof window.registerHostHealed === 'function') window.registerHostHealed();
+            _setCurePhase('');
+            if (interactionPromptElement) {
+                interactionPromptElement.textContent = 'Host recovered at base!';
+                setTimeout(() => { if (interactionPromptElement) interactionPromptElement.style.display = 'none'; }, 2500);
+            }
+            evacTarget = null;
+        }
     }
 }
 
@@ -232,28 +477,22 @@ function _cancelAntidoteApplication(reason = "Cancelled") {
 }
 
 function _failAntidoteApplication() {
-    // ... (No changes here)
      if (!currentAntidoteTarget) return;
     console.log("[CURE.JS] Minigame FAILED!", currentAntidoteTarget.name);
     const target = currentAntidoteTarget;
     _cancelAntidoteApplication("FAILED");
-    target.userData.isPatchPlaced = false;
-    target.userData.isStunned = true;
-    target.userData.stunTimer = ANTIDOTE_FAIL_PENALTY_TIME;
-    target.material.color.setHex(0xFF0000);
-    _removePatchMesh(target);
+    _incrementCureAttempt(target, 'antidote overload');
 }
 
 function _completeAntidoteApplication() {
-    // ... (No changes here)
     if (!currentAntidoteTarget) return;
-    console.log("[CURE.JS] Antidote Minigame COMPLETE for", currentAntidoteTarget.name);
-    currentAntidoteTarget.userData.isBeingSubdued = false;
-    currentAntidoteTarget.userData.isPatchPlaced = false;
-    currentAntidoteTarget.userData.isStunned = false;
-    currentAntidoteTarget.userData.isSubdued = true;
-    currentAntidoteTarget.material.color.setHex(0x556B2F);
-    _removePatchMesh(currentAntidoteTarget);
+    console.log("[CURE.JS] Antidote injection COMPLETE — starting Protect phase for", currentAntidoteTarget.name);
+    const target = currentAntidoteTarget;
+    target.userData.isBeingSubdued = false;
+    target.userData.isPatchPlaced = false;
+    target.userData.isStunned = false;
+    target.userData.isSubdued = false;
+    _removePatchMesh(target);
 
     isApplyingAntidote = false;
     window.isApplyingAntidote = false;
@@ -262,6 +501,8 @@ function _completeAntidoteApplication() {
     timeInSweetSpot = 0;
     isAimingAtPatch = false;
     if (antidoteMinigameElement) antidoteMinigameElement.style.display = 'none';
+
+    _startProtectPhase(target);
 }
 
 function _updateAntidoteUI() {
@@ -359,6 +600,15 @@ function _updateAntidoteApplication(delta) {
 // ... (No changes here)
 function updateCuringMechanic(delta) {
     if (!interactionPromptElement || !window.controls || !window.objects) return;
+
+    if (protectTarget) {
+        _updateProtectPhase(delta);
+        return;
+    }
+
+    if (evacTarget) {
+        _updateEvacPhase(delta);
+    }
 
     if (isApplyingPatch) {
         _updatePatchApplicationHold(delta);

@@ -1,0 +1,116 @@
+/* radial_menu.css */
+
+#radial-menu-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none; /* Hidden by default */
+    justify-content: center;
+    align-items: center;
+    z-index: 1002; /* Above other UI elements */
+    pointer-events: none; /* Allow clicks to pass through unless on menu item */
+}
+
+#radial-menu-container.active {
+    display: block; /* Show when active */
+    pointer-events: auto; /* Enable pointer events for the container */
+}
+
+.radial-menu {
+    position: absolute;
+    width: 0; /* Start collapsed */
+    height: 0; /* Start collapsed */
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.7);
+    transition: width 0.3s ease-out, height 0.3s ease-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.radial-menu.open {
+    width: 200px; /* Expanded size */
+    height: 200px; /* Expanded size */
+}
+
+.radial-menu-item {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background-color: #333;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 0.9em;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+    pointer-events: auto; /* Enable pointer events for items */
+    opacity: 0; /* Start hidden */
+    transform: scale(0); /* Start small */
+}
+
+.radial-menu.open .radial-menu-item {
+    opacity: 1; /* Fade in */
+    transform: scale(1); /* Grow */
+}
+
+.radial-menu-item:hover {
+    background-color: #555;
+    transform: scale(1.1); /* Slightly larger on hover */
+}
+
+.radial-menu-item.selected {
+    background-color: #007BFF;
+}
+
+/* Submenu styles */
+.radial-submenu {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.8);
+    transition: width 0.3s ease-out, height 0.3s ease-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.radial-submenu.open {
+    width: 150px;
+    height: 150px;
+}
+
+.radial-submenu-item {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background-color: #444;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 0.8em;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+    pointer-events: auto;
+    opacity: 0;
+    transform: scale(0);
+}
+
+.radial-submenu.open .radial-submenu-item {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.radial-submenu-item:hover {
+    background-color: #666;
+    transform: scale(1.1);
+}
