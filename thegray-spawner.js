@@ -15,9 +15,11 @@ function countActiveTheGray() {
 }
 
 function spawnOneTheGray() {
-    if (!window.controls || !window.createTheGray || !window.debugLog) {
-         console.error("Spawner: Missing required global objects (controls, createTheGray, debugLog). Cannot spawn.");
-         return;
+    if (!window.controls || !window.createTheGray) {
+        if (typeof window.debugLog === 'function') {
+            window.debugLog('Spawner: deferring spawn — controls or createTheGray not ready yet.');
+        }
+        return;
     }
 
     const playerPosition = window.controls.getObject().position;
@@ -35,8 +37,10 @@ function spawnOneTheGray() {
 }
 
 function despawnFarthestTheGray() {
-    if (!window.controls || !window.objects || !window.removeTheGray || !window.debugLog) {
-        console.error("Spawner: Missing required global objects for despawning. Cannot despawn.");
+    if (!window.controls || !window.objects || !window.removeTheGray) {
+        if (typeof window.debugLog === 'function') {
+            window.debugLog('Spawner: deferring despawn — required globals not ready yet.');
+        }
         return;
     }
 
