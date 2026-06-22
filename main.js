@@ -205,7 +205,11 @@ function initGame() {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
         document.getElementById('game-container').appendChild(renderer.domElement);
-    } catch (e) { console.error("main.js: Failed to initialize WebGLRenderer.", e); return; }
+    } catch (e) {
+        console.error("main.js: Failed to initialize WebGLRenderer.", e);
+        showLoadError('WebGL is not available. Try another browser or enable hardware acceleration.');
+        return;
+    }
 
     ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
     directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -293,10 +297,6 @@ function initGame() {
     if (typeof window.RadialMenu.initRadialMenu === 'function') {
         window.RadialMenu.initRadialMenu();
     } else { console.error("RadialMenu module (initRadialMenu) not found!"); }
-
-    if (typeof window.startTestSpawn === 'function') {
-        window.startTestSpawn();
-    } else { console.warn("Spawner test function (startTestSpawn) not found."); }
 
     window.addEventListener('resize', onWindowResize);
 
