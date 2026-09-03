@@ -6,6 +6,7 @@ const BASE_HEAL_RATE = 12;
 
 let playerHealth = PLAYER_MAX_HEALTH;
 let isPlayerDead = false;
+window.isPlayerDead = false;
 let hostsHealed = 0;
 let buildingsCompleted = 0;
 let failedCureAttempts = 0;
