@@ -1,0 +1,21 @@
+{
+  "name": "Antidote",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "user": "ubuntu",
+  "install": "php -v",
+  "terminals": [
+    {
+      "name": "php-server",
+      "command": "php -S 0.0.0.0:11011 -t .",
+      "description": "PHP dev server for the Antidote game. Open http://localhost:11011/index.php in the browser."
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "port": 11011
+    }
+  ]
+}
