@@ -15,8 +15,8 @@ function countActiveTheGray() {
 }
 
 function spawnOneTheGray() {
-    if (!window.controls || !window.createTheGray || !window.debugLog) {
-         console.error("Spawner: Missing required global objects (controls, createTheGray, debugLog). Cannot spawn.");
+    if (!window.controls || !window.createTheGray) {
+         console.error("Spawner: Missing required global objects (controls, createTheGray). Cannot spawn.");
          return;
     }
 
@@ -26,7 +26,9 @@ function spawnOneTheGray() {
     const spawnZ = playerPosition.z + Math.sin(randomAngle) * THE_GRAY_SPAWN_DISTANCE;
     const spawnPosition = new THREE.Vector3(spawnX, THE_GRAY_SPAWN_HEIGHT, spawnZ);
 
-    window.debugLog("Spawner: Attempting to spawn The-Gray at", spawnPosition);
+    if (typeof window.debugLog === 'function') {
+        window.debugLog("Spawner: Attempting to spawn The-Gray at", spawnPosition);
+    }
     window.createTheGray(spawnPosition);
 
     if (window.showTheGraySpawnNotification) {
@@ -35,7 +37,7 @@ function spawnOneTheGray() {
 }
 
 function despawnFarthestTheGray() {
-    if (!window.controls || !window.objects || !window.removeTheGray || !window.debugLog) {
+    if (!window.controls || !window.objects || !window.removeTheGray) {
         console.error("Spawner: Missing required global objects for despawning. Cannot despawn.");
         return;
     }

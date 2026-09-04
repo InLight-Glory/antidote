@@ -107,6 +107,7 @@ function getSandboxStats() {
 }
 
 window.initGameState = initGameState;
+window.syncHUD = syncHUD;
 window.damagePlayer = damagePlayer;
 window.healPlayer = healPlayer;
 window.registerBuildingCompleted = registerBuildingCompleted;

@@ -27,6 +27,7 @@ const SHOOT_DAMAGE = 25;
 const PARTICLE_COUNT = 15;
 const PARTICLE_LIFETIME = 1.5;
 const STUN_DURATION = 11.0;
+window.STUN_DURATION = STUN_DURATION;
 const DEV_SPAWN_DISTANCE = 20.0;
 const MAP_CAMERA_HEIGHT = 150; // NEW: Height for map camera
 const MAP_VIEW_SIZE = 100; // NEW: How much area map camera sees
