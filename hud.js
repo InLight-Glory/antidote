@@ -49,4 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (wood !== null && wood !== undefined) woodDiv.textContent = `Wood: ${wood}`;
         if (stone !== null && stone !== undefined) stoneDiv.textContent = `Stone: ${stone}`;
     };
+
+    // main.js may init game state before this DOMContentLoaded handler runs
+    if (typeof window.syncHUD === 'function') {
+        window.syncHUD();
+    }
 });

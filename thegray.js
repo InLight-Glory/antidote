@@ -20,11 +20,13 @@ const GRAY_DAMAGE_COOLDOWN = 0.8;
 
 function createTheGray(position) {
     // Ensure global dependencies are available
-    if (typeof window.debugLog !== 'function' || typeof THREE === 'undefined' || !window.scene || !window.objects) {
-        console.error("createTheGray: Missing global dependencies (debugLog, THREE, scene, or objects array)!");
+    if (typeof THREE === 'undefined' || !window.scene || !window.objects) {
+        console.error("createTheGray: Missing global dependencies (THREE, scene, or objects array)!");
         return null;
     }
-    window.debugLog("Creating The-Gray at", position);
+    if (typeof window.debugLog === 'function') {
+        window.debugLog("Creating The-Gray at", position);
+    }
     const grayGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.8, 16);
     const grayMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 });
     const theGray = new THREE.Mesh(grayGeometry, grayMaterial);
