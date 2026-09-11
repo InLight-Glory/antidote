@@ -135,7 +135,12 @@ function performShootOnReticle() {
             if (window.Boulders) window.Boulders.damageBoulder(hitObject);
             return;
         }
-        if (hitObject.userData && hitObject.userData.isResource) return;
+        if (hitObject.userData && hitObject.userData.isResource) {
+            if (inRange(hitObject, getInteractionRange())) {
+                pickupResource(hitObject);
+            }
+            return;
+        }
 
         if (!inRange(hitObject, getGatherRange())) continue;
 
