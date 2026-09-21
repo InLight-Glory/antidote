@@ -57,6 +57,23 @@ function resolveInteractable(hitObject) {
     return null;
 }
 
+function findNearestWoodInInteractionRange() {
+    if (!window.objects || !window.controls) return null;
+    let best = null;
+    let bestDist = Infinity;
+    for (const obj of window.objects) {
+        if (!obj.userData || !obj.userData.isResource || obj.userData.type !== 'wood') continue;
+        if (!isWithinRange(obj, INTERACTION_RANGE)) continue;
+        const dist = horizontalDistanceTo(obj);
+        if (dist < bestDist) {
+            bestDist = dist;
+            best = obj;
+        }
+    }
+    if (!best) return null;
+    return { kind: 'wood', object: best, range: INTERACTION_RANGE, distance: bestDist };
+}
+
 function findTargetUnderReticle() {
     if (!modalRaycaster || !window.camera || !window.objects || !window.controls) return null;
 
@@ -70,7 +87,7 @@ function findTargetUnderReticle() {
         resolved.distance = horizontalDistanceTo(resolved.object);
         return resolved;
     }
-    return null;
+    return findNearestWoodInInteractionRange();
 }
 
 function findFirstHitInRange() {
