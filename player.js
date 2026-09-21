@@ -52,6 +52,30 @@ function getInteractionRange() {
     return window.INTERACTION_RANGE || 5;
 }
 
+function horizontalDistanceToObject(object3d) {
+    if (window.InteractionModal && window.InteractionModal.horizontalDistanceTo) {
+        return window.InteractionModal.horizontalDistanceTo(object3d);
+    }
+    if (!controls || !object3d) return Infinity;
+    return controls.getObject().position.distanceTo(object3d.position);
+}
+
+function findNearestWoodInInteractionRange() {
+    if (!window.objects) return null;
+    let best = null;
+    let bestDist = Infinity;
+    for (const obj of window.objects) {
+        if (!obj.userData || !obj.userData.isResource || obj.userData.type !== 'wood') continue;
+        if (!inRange(obj, getInteractionRange())) continue;
+        const dist = horizontalDistanceToObject(obj);
+        if (dist < bestDist) {
+            bestDist = dist;
+            best = obj;
+        }
+    }
+    return best;
+}
+
 function resolveTargetFromHit(hitObject) {
     if (window.InteractionModal && window.InteractionModal.resolveInteractable) {
         return window.InteractionModal.resolveInteractable(hitObject);
@@ -119,23 +143,30 @@ function performShootOnReticle() {
     for (const hit of intersects) {
         const resolved = resolveTargetFromHit(hit.object);
         if (resolved) {
-            if (!inRange(resolved.object, resolved.range)) return;
+            if (!inRange(resolved.object, resolved.range)) continue;
             if (resolved.kind === 'blueprint' || resolved.kind === 'building') return;
             if (performPrimaryActionOnTarget(resolved)) return;
         }
 
         const hitObject = hit.object;
         if (hitObject.userData && hitObject.userData.isDarkGrey) {
-            if (!inRange(hitObject, getGatherRange())) return;
+            if (!inRange(hitObject, getGatherRange())) continue;
             if (window.darkGreyTakeDamage) window.darkGreyTakeDamage(hitObject, window.SHOOT_DAMAGE || 25);
             return;
         }
         if (hitObject.userData && hitObject.userData.isBoulder) {
-            if (!inRange(hitObject, getGatherRange())) return;
+            if (!inRange(hitObject, getGatherRange())) continue;
             if (window.Boulders) window.Boulders.damageBoulder(hitObject);
             return;
         }
-        if (hitObject.userData && hitObject.userData.isResource) return;
+        if (hitObject.userData && hitObject.userData.isResource) {
+            const resourceTarget = resolveTargetFromHit(hitObject);
+            if (resourceTarget && inRange(resourceTarget.object, resourceTarget.range)
+                && performPrimaryActionOnTarget(resourceTarget)) {
+                return;
+            }
+            continue;
+        }
 
         if (!inRange(hitObject, getGatherRange())) continue;
 
@@ -160,6 +191,11 @@ function performShootOnReticle() {
             }
             return;
         }
+    }
+
+    const nearbyWood = findNearestWoodInInteractionRange();
+    if (nearbyWood) {
+        pickupResource(nearbyWood);
     }
 }
 

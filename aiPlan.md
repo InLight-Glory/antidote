@@ -142,8 +142,8 @@ Work top to bottom. Mark items `[x]` when smoke test passes.
 
 ### P0 — Boot & core loop (blockers)
 
-- [ ] P0.1 Console clean on load: no `SyntaxError`, no `initPlayer not found`, spawner has `controls` + `createTheGray`
-- [ ] P0.2 Wood loop: chop tree → pile spawns → modal → click collect → HUD wood increases
+- [x] P0.1 Console clean on load: no `SyntaxError`, no `initPlayer not found`, spawner has `controls` + `createTheGray`
+- [x] P0.2 Wood loop: chop tree → pile spawns → modal → click collect → HUD wood increases
 - [ ] P0.3 Stone loop: mine boulder in range → stone in HUD
 - [ ] P0.4 Player death: Gray contact → health 0 → death screen → Restart reloads
 
@@ -215,6 +215,7 @@ Run after every meaningful change. Record pass/fail in session notes.
 |------|-------------|--------|
 | 2026-06-04 | Initial aiPlan | Created aiPlan.md + aiPlanLoop.md |
 | | Fixed duplicate globals, pickupResource, strafe jitter | A2, A11 improved |
+| 2026-09-21 | P0.1 boot + P0.2 wood loop | 🟢 PASS: `node --check` on classic scripts; headless Chrome (PHP server) — boot globals + canvas; chop→pile→click collect via nearest-in-range pickup, HUD wood updates |
 
 ---
 
