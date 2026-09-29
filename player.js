@@ -119,23 +119,29 @@ function performShootOnReticle() {
     for (const hit of intersects) {
         const resolved = resolveTargetFromHit(hit.object);
         if (resolved) {
-            if (!inRange(resolved.object, resolved.range)) return;
+            if (!inRange(resolved.object, resolved.range)) continue;
             if (resolved.kind === 'blueprint' || resolved.kind === 'building') return;
             if (performPrimaryActionOnTarget(resolved)) return;
         }
 
         const hitObject = hit.object;
         if (hitObject.userData && hitObject.userData.isDarkGrey) {
-            if (!inRange(hitObject, getGatherRange())) return;
+            if (!inRange(hitObject, getGatherRange())) continue;
             if (window.darkGreyTakeDamage) window.darkGreyTakeDamage(hitObject, window.SHOOT_DAMAGE || 25);
             return;
         }
         if (hitObject.userData && hitObject.userData.isBoulder) {
-            if (!inRange(hitObject, getGatherRange())) return;
+            if (!inRange(hitObject, getGatherRange())) continue;
             if (window.Boulders) window.Boulders.damageBoulder(hitObject);
             return;
         }
-        if (hitObject.userData && hitObject.userData.isResource) return;
+        if (hitObject.userData && hitObject.userData.isResource) {
+            const resourceResolved = resolveTargetFromHit(hitObject);
+            if (resourceResolved && inRange(resourceResolved.object, resourceResolved.range)) {
+                if (performPrimaryActionOnTarget(resourceResolved)) return;
+            }
+            continue;
+        }
 
         if (!inRange(hitObject, getGatherRange())) continue;
 
@@ -144,7 +150,7 @@ function performShootOnReticle() {
             return;
         }
         if (hitObject.parent && typeof hitObject.parent.takeDamage === 'function') {
-            if (!inRange(hitObject.parent, getGatherRange())) return;
+            if (!inRange(hitObject.parent, getGatherRange())) continue;
             hitObject.parent.takeDamage(window.SHOOT_DAMAGE || 25, 'player');
             return;
         }
@@ -233,7 +239,7 @@ function initPlayer(_camera, _scene) {
                         if (performPrimaryActionOnTarget(resolved)) return;
                         if (resolved.kind === 'blueprint') return;
                     }
-                    if (resolved && !inRange(resolved.object, resolved.range)) return;
+                    if (resolved && !inRange(resolved.object, resolved.range)) continue;
                 }
 
                 performShootOnReticle();
