@@ -10,6 +10,10 @@ let hostsHealed = 0;
 let buildingsCompleted = 0;
 let failedCureAttempts = 0;
 
+// Expose early so classic scripts / animate loop never read undefined before initGameState().
+window.playerHealth = playerHealth;
+window.isPlayerDead = isPlayerDead;
+
 function initGameState() {
     playerHealth = PLAYER_MAX_HEALTH;
     isPlayerDead = false;
