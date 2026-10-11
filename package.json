@@ -1,0 +1,11 @@
+{
+  "name": "antidote",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "boot-test": "node scripts/antidote-boot-test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
