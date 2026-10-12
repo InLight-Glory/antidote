@@ -57,6 +57,27 @@ function resolveInteractable(hitObject) {
     return null;
 }
 
+function findNearestWoodPileInRange() {
+    if (!window.objects || !window.controls) return null;
+
+    let best = null;
+    let bestDistance = Infinity;
+
+    for (const obj of window.objects) {
+        const resolved = resolveInteractable(obj);
+        if (!resolved || resolved.kind !== 'wood') continue;
+        if (!isWithinRange(resolved.object, resolved.range)) continue;
+        const distance = horizontalDistanceTo(resolved.object);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            best = resolved;
+        }
+    }
+
+    if (best) best.distance = bestDistance;
+    return best;
+}
+
 function findTargetUnderReticle() {
     if (!modalRaycaster || !window.camera || !window.objects || !window.controls) return null;
 
@@ -70,7 +91,9 @@ function findTargetUnderReticle() {
         resolved.distance = horizontalDistanceTo(resolved.object);
         return resolved;
     }
-    return null;
+
+    // Ground wood piles are below the FPS reticle; allow collect when standing nearby.
+    return findNearestWoodPileInRange();
 }
 
 function findFirstHitInRange() {
@@ -205,6 +228,7 @@ window.InteractionModal = {
     initInteractionModal,
     updateInteractionModal,
     findTargetUnderReticle,
+    findNearestWoodPileInRange,
     findFirstHitInRange,
     resolveInteractable,
     isWithinRange,
