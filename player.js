@@ -227,13 +227,26 @@ function initPlayer(_camera, _scene) {
                 raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
                 const intersects = raycaster.intersectObjects(window.objects, true);
 
+                let handledInteractable = false;
                 for (const hit of intersects) {
                     const resolved = resolveTargetFromHit(hit.object);
                     if (resolved && inRange(resolved.object, resolved.range)) {
+                        handledInteractable = true;
                         if (performPrimaryActionOnTarget(resolved)) return;
                         if (resolved.kind === 'blueprint') return;
                     }
                     if (resolved && !inRange(resolved.object, resolved.range)) return;
+                }
+
+                if (
+                    !handledInteractable &&
+                    window.InteractionModal &&
+                    typeof window.InteractionModal.findNearestWoodPileInRange === 'function'
+                ) {
+                    const woodTarget = window.InteractionModal.findNearestWoodPileInRange();
+                    if (woodTarget && inRange(woodTarget.object, woodTarget.range)) {
+                        if (performPrimaryActionOnTarget(woodTarget)) return;
+                    }
                 }
 
                 performShootOnReticle();

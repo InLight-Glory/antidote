@@ -135,10 +135,10 @@ export function removeTree(treeMesh) {
 }
 
 export function spawnWoodResource(position, value) {
-    const woodGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const woodGeometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
     const woodMaterial = new THREE.MeshStandardMaterial({ color: 0xA0522D }); // Sienna
     const wood = new THREE.Mesh(woodGeometry, woodMaterial);
-    wood.position.set(position.x, 0.25, position.z); // Slightly above ground
+    wood.position.set(position.x, 0.45, position.z); // Slightly above ground for reticle hits
     wood.name = "WoodResource";
     wood.userData = { isResource: true, type: 'wood', value: value };
     scene.add(wood);
