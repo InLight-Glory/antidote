@@ -1,0 +1,12 @@
+{
+  "name": "antidote",
+  "private": true,
+  "description": "Three.js sandbox — local entry index.php",
+  "scripts": {
+    "test:boot": "node scripts/antidote-boot-test.mjs",
+    "test:wood": "node scripts/antidote-wood-test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}
