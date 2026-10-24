@@ -14,7 +14,7 @@ The alpha is **polished** when all items below pass manual smoke tests with **ze
 |---|-----------|--------|
 | A1 | Game loads via `index.php`; scene visible (not black); HUD updates | 🟡 partial |
 | A2 | FPS movement (WASD, sprint, jump) smooth — no ground jitter while strafing | 🟢 fixed |
-| A3 | Gather wood (trees → pile → click collect) and stone (boulders); HUD reflects inventory | 🟡 partial |
+| A3 | Gather wood (trees → pile → click collect) and stone (boulders); HUD reflects inventory | 🟡 partial (stone headless OK) |
 | A4 | Map mode (`M`): build preview (`B` → radial menu); place blueprint; deposit with `E` in range | 🟡 partial |
 | A5 | Main base completes; player heals inside base radius; stats track buildings | 🟡 unverified |
 | A6 | Collector buildings spawn bots that gather and deposit wood/stone | 🔴 unverified |
@@ -144,7 +144,7 @@ Work top to bottom. Mark items `[x]` when smoke test passes.
 
 - [ ] P0.1 Console clean on load: no `SyntaxError`, no `initPlayer not found`, spawner has `controls` + `createTheGray`
 - [ ] P0.2 Wood loop: chop tree → pile spawns → modal → click collect → HUD wood increases
-- [ ] P0.3 Stone loop: mine boulder in range → stone in HUD
+- [x] P0.3 Stone loop: mine boulder in range → stone in HUD
 - [ ] P0.4 Player death: Gray contact → health 0 → death screen → Restart reloads
 
 ### P1 — Build & economy
@@ -215,6 +215,7 @@ Run after every meaningful change. Record pass/fail in session notes.
 |------|-------------|--------|
 | 2026-06-04 | Initial aiPlan | Created aiPlan.md + aiPlanLoop.md |
 | | Fixed duplicate globals, pickupResource, strafe jitter | A2, A11 improved |
+| 2026-10-24 | P0.3 stone loop | 🟢 PASS: `npm run test:stone` (7 hits → +5 stone HUD); gather raycast `continue` + wood pile pickup fix in `player.js` |
 
 ---
 

@@ -119,7 +119,7 @@ function performShootOnReticle() {
     for (const hit of intersects) {
         const resolved = resolveTargetFromHit(hit.object);
         if (resolved) {
-            if (!inRange(resolved.object, resolved.range)) return;
+            if (!inRange(resolved.object, resolved.range)) continue;
             if (resolved.kind === 'blueprint' || resolved.kind === 'building') return;
             if (performPrimaryActionOnTarget(resolved)) return;
         }
@@ -135,7 +135,12 @@ function performShootOnReticle() {
             if (window.Boulders) window.Boulders.damageBoulder(hitObject);
             return;
         }
-        if (hitObject.userData && hitObject.userData.isResource) return;
+        if (hitObject.userData && hitObject.userData.isResource) {
+            if (inRange(hitObject, getInteractionRange())) {
+                pickupResource(hitObject);
+            }
+            return;
+        }
 
         if (!inRange(hitObject, getGatherRange())) continue;
 
@@ -233,7 +238,7 @@ function initPlayer(_camera, _scene) {
                         if (performPrimaryActionOnTarget(resolved)) return;
                         if (resolved.kind === 'blueprint') return;
                     }
-                    if (resolved && !inRange(resolved.object, resolved.range)) return;
+                    if (resolved && !inRange(resolved.object, resolved.range)) continue;
                 }
 
                 performShootOnReticle();

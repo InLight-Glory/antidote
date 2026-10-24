@@ -1,0 +1,24 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "Three.js sandbox game — local entry: `index.php`",
+  "main": "main.js",
+  "scripts": {
+    "test:boot": "node scripts/antidote-boot-test.mjs",
+    "test:stone": "node scripts/antidote-stone-test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InLight-Glory/antidote.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/InLight-Glory/antidote/issues"
+  },
+  "homepage": "https://github.com/InLight-Glory/antidote#readme",
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
