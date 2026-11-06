@@ -1,4 +1,8 @@
 // game_state.js - Sandbox stats, player health, death, cure attempt tracking
+// main.js (ES module) loads after classic scripts; stub so earlier code can log safely.
+if (typeof window.debugLog !== 'function') {
+    window.debugLog = function () {};
+}
 
 const PLAYER_MAX_HEALTH = 100;
 const BASE_HEAL_RADIUS = 12;

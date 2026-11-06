@@ -294,10 +294,6 @@ function initGame() {
         window.RadialMenu.initRadialMenu();
     } else { console.error("RadialMenu module (initRadialMenu) not found!"); }
 
-    if (typeof window.startTestSpawn === 'function') {
-        window.startTestSpawn();
-    } else { console.warn("Spawner test function (startTestSpawn) not found."); }
-
     window.addEventListener('resize', onWindowResize);
 
     if (debugPanel) debugPanel.style.display = enableDebugLogs ? 'block' : 'none';
