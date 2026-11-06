@@ -142,7 +142,7 @@ Work top to bottom. Mark items `[x]` when smoke test passes.
 
 ### P0 — Boot & core loop (blockers)
 
-- [ ] P0.1 Console clean on load: no `SyntaxError`, no `initPlayer not found`, spawner has `controls` + `createTheGray`
+- [x] P0.1 Console clean on load: no `SyntaxError`, no `initPlayer not found`, spawner has `controls` + `createTheGray`
 - [ ] P0.2 Wood loop: chop tree → pile spawns → modal → click collect → HUD wood increases
 - [ ] P0.3 Stone loop: mine boulder in range → stone in HUD
 - [ ] P0.4 Player death: Gray contact → health 0 → death screen → Restart reloads
@@ -215,6 +215,7 @@ Run after every meaningful change. Record pass/fail in session notes.
 |------|-------------|--------|
 | 2026-06-04 | Initial aiPlan | Created aiPlan.md + aiPlanLoop.md |
 | | Fixed duplicate globals, pickupResource, strafe jitter | A2, A11 improved |
+| 2026-11-06 | P0.1 boot / spawner console | 🟢 PASS: Early `window.debugLog` stub in `game_state.js`; spawner no longer treats missing debugLog as fatal; removed automatic 5s `startTestSpawn` from `main.js` (alpha uses 15 min interval). Static: `node --check` on edited files. Human: hard refresh §6 steps 1 + 8 for zero uncaught errors. |
 
 ---
 

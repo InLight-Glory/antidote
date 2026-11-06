@@ -15,8 +15,8 @@ function countActiveTheGray() {
 }
 
 function spawnOneTheGray() {
-    if (!window.controls || !window.createTheGray || !window.debugLog) {
-         console.error("Spawner: Missing required global objects (controls, createTheGray, debugLog). Cannot spawn.");
+    if (!window.controls || !window.createTheGray) {
+         console.error("Spawner: Missing required globals (controls, createTheGray). Cannot spawn.");
          return;
     }
 
@@ -26,7 +26,7 @@ function spawnOneTheGray() {
     const spawnZ = playerPosition.z + Math.sin(randomAngle) * THE_GRAY_SPAWN_DISTANCE;
     const spawnPosition = new THREE.Vector3(spawnX, THE_GRAY_SPAWN_HEIGHT, spawnZ);
 
-    window.debugLog("Spawner: Attempting to spawn The-Gray at", spawnPosition);
+    if (typeof window.debugLog === 'function') window.debugLog("Spawner: Attempting to spawn The-Gray at", spawnPosition);
     window.createTheGray(spawnPosition);
 
     if (window.showTheGraySpawnNotification) {
@@ -35,8 +35,8 @@ function spawnOneTheGray() {
 }
 
 function despawnFarthestTheGray() {
-    if (!window.controls || !window.objects || !window.removeTheGray || !window.debugLog) {
-        console.error("Spawner: Missing required global objects for despawning. Cannot despawn.");
+    if (!window.controls || !window.objects || !window.removeTheGray) {
+        console.error("Spawner: Missing required globals for despawning (controls, objects, removeTheGray). Cannot despawn.");
         return;
     }
 
@@ -55,7 +55,7 @@ function despawnFarthestTheGray() {
     });
 
     if (farthestGray) {
-        window.debugLog("Spawner: Max count reached. Despawning farthest The-Gray:", farthestGray.name);
+        if (typeof window.debugLog === 'function') window.debugLog("Spawner: Max count reached. Despawning farthest The-Gray:", farthestGray.name);
         window.removeTheGray(farthestGray);
     }
 }
@@ -65,7 +65,7 @@ function updateSpawner(delta) {
     if (theGraySpawnTimer <= 0) {
         theGraySpawnTimer = THE_GRAY_SPAWN_INTERVAL;
         const currentGrayCount = countActiveTheGray();
-        if (window.debugLog) window.debugLog("Spawner: Timer up! Current The-Gray count:", currentGrayCount);
+        if (typeof window.debugLog === 'function') window.debugLog("Spawner: Timer up! Current The-Gray count:", currentGrayCount);
 
         if (currentGrayCount < THE_GRAY_MAX_COUNT) {
             spawnOneTheGray();
@@ -76,12 +76,8 @@ function updateSpawner(delta) {
     }
 }
 
-function startTestSpawn() {
-    setTimeout(() => {
-        spawnOneTheGray();
-        if (window.debugLog) window.debugLog('Spawned a The-Gray after 5 seconds for testing.');
-    }, 5000);
-}
+/** Optional manual hook; automatic 5s test spawn removed for alpha (15 min interval only). */
+function startTestSpawn() {}
 
 window.updateSpawner = updateSpawner;
 window.spawnOneTheGray = spawnOneTheGray; // Keep for potential manual calls or if other modules need it
